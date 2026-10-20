@@ -259,7 +259,7 @@ public final class NtgCalls implements AutoCloseable {
     private final Pointer handle;
     private final Map<Long, ConnInfo> conns = new ConcurrentHashMap<>();
     private final List<Consumer<Long>> streamEndHandlers = new ArrayList<>();
-    private final List<BiConsumer<Long, Boolean>> connHandlers = new ArrayList<>();
+    private final List<BiConsumer<Long, String>> connHandlers = new ArrayList<>();
     private final Object connLock = new Object();
     private volatile boolean closed;
 
@@ -284,9 +284,9 @@ public final class NtgCalls implements AutoCloseable {
             conns.put(chat, new ConnInfo(settled, connected, state));
             connLock.notifyAll();
         }
-        List<BiConsumer<Long, Boolean>> copy;
+        List<BiConsumer<Long, String>> copy;
         synchronized (connHandlers) { copy = new ArrayList<>(connHandlers); }
-        for (BiConsumer<Long, Boolean> handler : copy) handler.accept(chat, connected);
+        for (BiConsumer<Long, String> handler : copy) handler.accept(chat, state);
     };
 
     public NtgCalls(String libName) {
@@ -336,7 +336,7 @@ public final class NtgCalls implements AutoCloseable {
         synchronized (streamEndHandlers) { streamEndHandlers.add(handler); }
     }
 
-    public void onConnectionChange(BiConsumer<Long, Boolean> handler) {
+    public void onConnectionChange(BiConsumer<Long, String> handler) {
         synchronized (connHandlers) { connHandlers.add(handler); }
     }
 

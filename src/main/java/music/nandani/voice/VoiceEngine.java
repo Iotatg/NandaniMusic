@@ -31,6 +31,10 @@ public final class VoiceEngine {
 
     public void onStreamEnd(Consumer<Long> handler) { ntg.onStreamEnd(handler); }
 
+    public void onConnectionChange(java.util.function.BiConsumer<Long, String> handler) {
+        ntg.onConnectionChange(handler);
+    }
+
     /** Joins the call if needed and starts streaming. Returns "" on success. */
     public synchronized String playFile(long chatId, String path, long pos, double speed, boolean video) {
         System.err.println("[voice] playFile chat=" + chatId + " video=" + video

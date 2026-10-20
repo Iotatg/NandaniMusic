@@ -5,6 +5,7 @@ import music.nandani.platform.PlatformRegistry;
 import music.nandani.room.PlayAction;
 import music.nandani.room.RoomState;
 import music.nandani.tg.Bot;
+import music.nandani.tg.Markup;
 import music.nandani.voice.AssistantManager;
 import music.nandani.voice.VoiceEngine;
 
@@ -37,11 +38,14 @@ public final class Monitor {
         }
     }
 
+    /** chatId -> consecutive end ticks (Parvati monitor.rs end_streak). */
+    private final java.util.Map<Long, Integer> endStreak = new java.util.HashMap<>();
+
     private void watchdog() {
         for (var e : Core.rooms.allRooms()) {
             long chatId = e.getKey();
             RoomState r = e.getValue();
-            if (r.destroyed() || !r.active()) continue;
+            if (r.destroyed() || !r.active() || r.paused) continue;
             AssistantManager am = Core.assistants;
             if (am == null || am.forChat(chatId) == null) continue;
             Track t = r.track;
@@ -51,6 +55,28 @@ public final class Monitor {
             // Engine reports 0 while buffering; only trust it once it advanced.
             if (enginePos > 0 && Math.abs(enginePos - statePos) > 12) {
                 r.position = enginePos;
+            }
+            // end_streak_hit parity: 3 consecutive ticks past the duration
+            // means the stream-end event was missed — rescue the queue.
+            if (t.duration > 0 && r.position >= t.duration) {
+                int s = endStreak.merge(chatId, 1, Integer::sum);
+                if (s >= 3) {
+                    endStreak.remove(chatId);
+                    System.out.println("[monitor] end watchdog: advancing chat " + chatId);
+                    advanceRoom(chatId);
+                    continue;
+                }
+            } else {
+                endStreak.remove(chatId);
+            }
+            // Keep the now-playing card's progress row fresh (card_edit parity).
+            long mid = r.statusMsg;
+            Bot bot = Core.bot;
+            if (mid != 0 && bot != null && Core.botReady
+                    && !(t.duration > 0 && r.position >= t.duration)) {
+                String text = Common.nowPlayingText(chatId, t);
+                Markup mk = Buttons.playMarkup(Core.loc, Core.lang(chatId), r.view(), false);
+                Common.cardEdit(bot, chatId, mid, text, mk, r.statusIsPhoto);
             }
         }
     }

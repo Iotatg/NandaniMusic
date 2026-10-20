@@ -95,7 +95,9 @@ public final class CallbackModule {
             }
             case "stop" -> {
                 Markup mk = Buttons.stopConfirmMarkup(Core.loc, Core.lang(cb.chatId), r.view());
-                bot.editText(cb.chatId, cb.messageId, Core.f(cb.chatId, "stop_confirm_paused"), mk);
+                // Parvati stop.rs parity: paused -> resume prompt, playing -> unmute prompt
+                String text = Core.f(cb.chatId, r.paused ? "stop_confirm_paused" : "stop_confirm_muted");
+                bot.editText(cb.chatId, cb.messageId, text, mk);
                 bot.answerCallback(cb.queryId, "", false);
             }
             case "seek_15" -> {

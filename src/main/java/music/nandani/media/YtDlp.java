@@ -82,7 +82,10 @@ public final class YtDlp {
         List<String> cmd = new ArrayList<>();
         cmd.add(binary);
         addCommon(cmd);
-        cmd.add("--no-playlist");
+        // A URL with a list= param (autoplay RD mixes) must extract the
+        // playlist — --no-playlist would return nothing for it.
+        boolean playlistUrl = target.startsWith("http") && target.contains("list=");
+        if (!playlistUrl) cmd.add("--no-playlist");
         cmd.add("--flat-playlist");
         cmd.add("-J");
         cmd.add(target);

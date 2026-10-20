@@ -260,17 +260,71 @@ public final class PlatformRegistry {
 
     public List<Track> autoplayTracks(Track last, int limit, List<String> history) {
         List<Track> filtered = new ArrayList<>();
-        for (Track t : related(last, limit + 4)) {
-            if (t.id.isEmpty() && t.url.isEmpty()) continue;
-            if (!t.id.isEmpty() && t.id.equals(last.id)) continue;
-            if (!t.id.isEmpty() && history.contains("id:" + t.id)) continue;
+        java.util.function.Predicate<Track> accept = t -> {
+            if ((t.id == null || t.id.isEmpty()) && (t.url == null || t.url.isEmpty())) return false;
+            if (t.id != null && !t.id.isEmpty() && t.id.equals(last.id)) return false;
+            if (t.id != null && !t.id.isEmpty() && history.contains("id:" + t.id)) return false;
             String n = Track.normalizeTrackTitle(t.title);
-            if (!n.isEmpty() && history.contains("title:" + n)) continue;
+            return n.isEmpty() || !history.contains("title:" + n);
+        };
+        // Tier 0: iota /similar (fast API, same as Parvati registry.rs)
+        for (Track t : iotaSimilar(last, 8)) {
+            if (!accept.test(t)) continue;
             t.video = last.video;
             filtered.add(t);
             if (limit > 0 && filtered.size() >= limit) break;
         }
+        // Tier 1: YouTube radio mix, Tier 2: "<title> similar songs"
+        if (filtered.isEmpty()) {
+            for (Track t : related(last, limit + 4)) {
+                if (!accept.test(t)) continue;
+                t.video = last.video;
+                filtered.add(t);
+                if (limit > 0 && filtered.size() >= limit) break;
+            }
+        }
         return filtered;
+    }
+
+    /** iota /similar/{media_id} — Tier 0 autoplay source. */
+    private List<Track> iotaSimilar(Track last, int limit) {
+        if (cfg.iotaApiUrl == null || cfg.iotaApiUrl.isBlank() || last == null) return List.of();
+        String media = "";
+        if (PLATFORM_YOUTUBE.equals(last.source) && last.id != null && !last.id.isEmpty()) {
+            media = "yt:" + last.id;
+        } else if (PLATFORM_IOTA.equals(last.source) && last.id != null) {
+            media = last.id;
+        }
+        if (media.isEmpty()) return List.of();
+        String key = cfg.iotaApiKey == null ? "" : cfg.iotaApiKey;
+        String url = cfg.iotaApiUrl.replaceAll("/+$", "")
+                + "/similar/" + java.net.URLEncoder.encode(media, java.nio.charset.StandardCharsets.UTF_8)
+                + "?limit=" + limit + (key.isBlank() ? "" : "&key=" + key);
+        List<Track> out = new ArrayList<>();
+        try {
+            HttpRequest.Builder b = HttpRequest.newBuilder(URI.create(url))
+                    .timeout(Duration.ofSeconds(12)).GET();
+            if (!key.isBlank()) b.header("X-API-Key", key);
+            HttpResponse<String> res = HTTP.send(b.build(), HttpResponse.BodyHandlers.ofString());
+            if (res.statusCode() / 100 != 2) return out;
+            JsonNode arr = JSON.readTree(res.body()).path("results");
+            if (!arr.isArray()) return out;
+            for (JsonNode n : arr) {
+                String id = n.path("media_id").asText("");
+                String title = n.path("title").asText("");
+                if (id.isEmpty() || title.isEmpty()) continue;
+                String artist = n.path("artist").asText("");
+                if (!artist.isEmpty() && !title.isEmpty()) title = title + " - " + artist;
+                String link = id.startsWith("yt:")
+                        ? "https://youtu.be/" + id.substring(3)
+                        : n.path("stream_url").asText("");
+                Track t = new Track(id, title, n.path("duration_seconds").asLong(0), link, PLATFORM_IOTA);
+                t.artwork = n.path("thumbnail_url").asText("");
+                out.add(t);
+            }
+        } catch (Exception ignored) {
+        }
+        return out;
     }
 
     private List<Track> related(Track last, int limit) {

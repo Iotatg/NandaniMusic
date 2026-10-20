@@ -56,6 +56,7 @@ public final class MtBot implements Bot {
     private volatile long lastPeerRefresh;
 
     private final List<Consumer<TgMessage>> messageHandlers = new CopyOnWriteArrayList<>();
+    private final List<java.util.function.BiConsumer<Long, VoiceChatEvent>> vcHandlers = new CopyOnWriteArrayList<>();
     private final Map<String, List<Consumer<TgMessage>>> commandHandlers = new ConcurrentHashMap<>();
     private final List<Map.Entry<String, List<Consumer<TgCallback>>>> callbackHandlers = new CopyOnWriteArrayList<>();
 
@@ -513,6 +514,14 @@ public final class MtBot implements Bot {
             }
             long chatId = encodePeer(peer);
 
+            // Service messages carry an action instead of text/media — the
+            // group-call one is our VC start/end signal (messageActionGroupCall:
+            // no duration = VC started, duration = VC ended).
+            if ("messageService".equals(msg.name)) {
+                emitVoiceChatEvent(chatId, msg.node("action"), msg.i("id"));
+                return;
+            }
+
             TgMessage m = new TgMessage();
             m.chatId = chatId;
             m.id = msg.i("id");
@@ -608,10 +617,33 @@ public final class MtBot implements Bot {
         }
     }
 
+    /** Group-call service message: VC start/end event (messageActionGroupCall). */
+    public record VoiceChatEvent(long chatId, boolean ended, int durationSec, long messageId) {}
+
+    /** Subscribe to voice-chat start/end service events. */
+    public void onVoiceChat(java.util.function.BiConsumer<Long, VoiceChatEvent> handler) {
+        vcHandlers.add(handler);
+    }
+
+    private void emitVoiceChatEvent(long chatId, TlNode action, long messageId) {
+        if (action == null || !"messageActionGroupCall".equals(action.name)) return;
+        boolean ended = action.has("duration");
+        int dur = ended ? action.i("duration") : 0;
+        VoiceChatEvent ev = new VoiceChatEvent(chatId, ended, dur, messageId);
+        System.out.println("[upd] voice chat " + (ended ? "ended (" + dur + "s)" : "started")
+                + " chat=" + chatId);
+        for (java.util.function.BiConsumer<Long, VoiceChatEvent> h : vcHandlers) {
+            try {
+                h.accept(chatId, ev);
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     private void dispatch(TgMessage m) {
         System.out.println("[in] chat=" + m.chatId + " user=" + m.senderId
-                + " thread=" + m.messageThreadId + " text=" + m.text);
-        for (Consumer<TgMessage> h : messageHandlers) {
+                + " thread=" + m.messageThreadId + " text=" + m.text);        for (Consumer<TgMessage> h : messageHandlers) {
             try {
                 h.accept(m);
             } catch (Throwable e) {

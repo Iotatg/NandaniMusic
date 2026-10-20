@@ -32,6 +32,14 @@ import java.util.Scanner;
 /** Entry point — mirrors bot/src/main.rs. */
 public final class Main {
 
+    /** Serializes stream-end events per submission; 2 threads is plenty. */
+    private static final java.util.concurrent.ScheduledExecutorService monitorStreamEndExecutor =
+            java.util.concurrent.Executors.newScheduledThreadPool(2, r -> {
+                Thread t = new Thread(r, "nandani-stream-end");
+                t.setDaemon(true);
+                return t;
+            });
+
     public static void main(String[] args) {
         System.out.println("""
                 ╔══════════════════════════════════════╗
@@ -151,6 +159,26 @@ public final class Main {
 
         Core.monitor = new Monitor();
         Core.monitor.start();
+        // wire_stream_end parity: feed stream-end events into advanceRoom on
+        // their own threads (never block the native ntg callback thread).
+        // Debounce 3s: ntgcalls fires one event per stream (audio AND video),
+        // a second event right after an advance would skip the fresh track.
+        assistants.forEach(a -> a.engine.onStreamEnd(chatId ->
+                monitorStreamEndExecutor.submit(() -> Core.monitor.advanceRoom(chatId))));
+        // Connection terminally lost (VC closed / assistant kicked) -> destroy
+        // the room so /play can join fresh instead of streaming into a dead
+        // call. Only settled failure states — connecting/connected are fine.
+        assistants.forEach(a -> a.engine.onConnectionChange((chatId, state) -> {
+            if ("closed".equals(state) || "failed".equals(state) || "timeout".equals(state)) {
+                monitorStreamEndExecutor.submit(() -> {
+                    if (Core.rooms.roomFor(chatId) != null) {
+                        System.out.println("[monitor] connection " + state + " chat=" + chatId + " → dropping room");
+                        Core.rooms.dropRoom(chatId);
+                    }
+                });
+            }
+        }));
+        System.out.println("[monitor] stream-end handlers wired for " + assistants.count() + " assistant(s)");
 
         boolean dryRun = music.nandani.util.Util.parseBool(
                 System.getenv().getOrDefault("NANDANI_DRY_RUN", ""));
@@ -222,6 +250,15 @@ public final class Main {
         bot.onMessage(m -> {
             try {
                 reg.dispatchMessage(bot, m);
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        });
+        // Voice-chat start/end service messages -> styled announcement +
+        // room cleanup on end (EventsModule.onVoiceChat).
+        bot.onVoiceChat((chatId, ev) -> {
+            try {
+                EventsModule.onVoiceChat(bot, chatId, ev);
             } catch (Throwable e) {
                 e.printStackTrace();
             }
