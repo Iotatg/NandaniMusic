@@ -9,7 +9,7 @@ import music.nandani.util.Util;
 
 import java.util.List;
 
-/** Inline keyboard builders — 1:1 with bot/src/buttons.rs. */
+/** Inline keyboard builders. */
 public final class Buttons {
 
     private static volatile String botUsername = "";

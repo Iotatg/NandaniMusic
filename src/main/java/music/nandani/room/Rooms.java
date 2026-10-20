@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Global chat_id -&gt; RoomState map — 1:1 with Rooms in bot/src/room.rs. */
+/** Global chat_id -&gt; RoomState map. */
 public final class Rooms {
 
     private final Map<Long, RoomState> map = new ConcurrentHashMap<>();

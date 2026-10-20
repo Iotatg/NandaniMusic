@@ -8,7 +8,7 @@ import java.util.function.Consumer;
 
 /**
  * Voice engine per assistant: joins the group call with an ntgcalls SDP offer,
- * then streams a local file. Mirrors context.rs (join / set_stream_sources /
+ * then streams a local file (join / set_stream_sources /
  * re-join on audio&lt;-&gt;video switch).
  */
 public final class VoiceEngine {
@@ -80,7 +80,7 @@ public final class VoiceEngine {
         // Sources MUST be configured before ntg_create: the SDP offer carries
         // the video m-line only for streams already configured, and Telegram
         // discards every video frame from a call joined with an audio-only
-        // offer (parity with the Parvati join_locked flow).
+        // offer — Telegram discards video frames from audio-only offers.
         boolean preconfigured = ntg.setStreamSources(chatId, desc);
         String offer = ntg.create(chatId);
         if (offer == null) {

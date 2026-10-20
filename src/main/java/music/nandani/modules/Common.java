@@ -7,7 +7,7 @@ import music.nandani.tg.Markup;
 import music.nandani.tg.TgMessage;
 import music.nandani.util.Util;
 
-/** Shared card/message helpers — 1:1 with modules/common.rs. */
+/** Shared card/message helpers. */
 public final class Common {
 
     private Common() {}

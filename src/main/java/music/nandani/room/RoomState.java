@@ -9,8 +9,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Per-chat playback state machine — 1:1 port of bot/src/room.rs.
- * All public methods are synchronized, matching the Rust Mutex&lt;RoomState&gt; usage.
+ * Per-chat playback state machine.
+ * All public methods are synchronized for thread safety.
  */
 public final class RoomState {
 

@@ -1,6 +1,6 @@
 package music.nandani.tg;
 
-/** Incoming callback query — mirrors TgCallback. */
+/** Incoming callback query. */
 public final class TgCallback {
     public long queryId;
     public long chatId;

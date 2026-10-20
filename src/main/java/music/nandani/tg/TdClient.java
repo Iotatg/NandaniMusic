@@ -14,7 +14,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 /**
- * TDLib-backed bot client. Implements the same facade the Rust bot uses
+ * TDLib-backed bot client. Implements the shared bot facade
  * (send/edit/delete/member ops), but over TDLib's JSON API instead of the
  * hand-rolled MTProto stack.
  */
@@ -279,7 +279,7 @@ public final class TdClient extends TdSession implements Bot {
         p.put("data", Base64.getEncoder().encodeToString(
                 (text == null ? "" : text).getBytes(StandardCharsets.UTF_8)));
         // TDLib shows a toast for answerCallbackQuery; alert text goes through
-        // the answer payload on Bot API. Keep the call for parity.
+        // the answer payload on Bot API. The call is kept for compatibility.
         request(r, 15_000);
         if (alert && text != null && !text.isEmpty()) {
             // No direct alert in TDLib JSON; the toast is the equivalent.

@@ -17,9 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * yt-dlp driven resolver/downloader.
- * Replaces the Rust YouTube platform + provider APIs with the same observable
- * behaviour: search -&gt; pick -&gt; download to a local file -&gt; hand the path to
- * ntgcalls.
+ * Search -&gt; pick -&gt; download to a local file -&gt; hand the path to ntgcalls.
  */
 public final class YtDlp {
 

@@ -17,7 +17,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * JNA binding over libntgcalls 3.0.4 — 1:1 with include/ntgcalls.h
+ * JNA binding over libntgcalls 3.0.4
  * (synchronous C ABI: every call returns ntg_result, no futures).
  */
 public final class NtgCalls implements AutoCloseable {
@@ -666,7 +666,7 @@ public final class NtgCalls implements AutoCloseable {
     }
 
     // ------------------------------------------------------------------
-    // media_from_file (same ffmpeg pipelines as the Rust binding)
+    // media_from_file (ffmpeg rawvideo pipelines)
     // ------------------------------------------------------------------
 
     public static MediaDesc mediaFromFile(String path, long pos, double speed, boolean video) {

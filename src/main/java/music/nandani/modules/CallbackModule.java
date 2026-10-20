@@ -7,7 +7,7 @@ import music.nandani.tg.Markup;
 import music.nandani.tg.TgCallback;
 import music.nandani.util.Util;
 
-/** Callback routing — mirrors roomcb.rs / settings_cb.rs / events.rs. */
+/** Callback routing: room controls, help, settings. */
 public final class CallbackModule {
 
     private CallbackModule() {}
@@ -95,7 +95,7 @@ public final class CallbackModule {
             }
             case "stop" -> {
                 Markup mk = Buttons.stopConfirmMarkup(Core.loc, Core.lang(cb.chatId), r.view());
-                // Parvati stop.rs parity: paused -> resume prompt, playing -> unmute prompt
+                // paused -> resume prompt, playing -> unmute prompt
                 String text = Core.f(cb.chatId, r.paused ? "stop_confirm_paused" : "stop_confirm_muted");
                 bot.editText(cb.chatId, cb.messageId, text, mk);
                 bot.answerCallback(cb.queryId, "", false);

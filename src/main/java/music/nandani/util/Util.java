@@ -5,7 +5,7 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 
-/** Pure helpers — 1:1 port of bot/src/utils.rs. */
+/** Pure formatting/parsing helpers. */
 public final class Util {
 
     private Util() {}
@@ -200,7 +200,7 @@ public final class Util {
         return BAR[(int) index];
     }
 
-    /** Byte-based truncation with U+2026 suffix (mirrors Rust's as_bytes()[..max]). */
+    /** Byte-based truncation with U+2026 suffix. */
     public static String shortTitle(String title, int max) {
         if (title == null) return "";
         byte[] bytes = title.getBytes(StandardCharsets.UTF_8);
@@ -424,7 +424,7 @@ public final class Util {
         return out.toByteArray();
     }
 
-    /** Java counterpart of Rust's `text.split(' ').next()` for command parsing. */
+    /** First whitespace token of a command text. */
     public static String commandOf(String text) {
         if (text == null) return "";
         int sp = text.indexOf(' ');

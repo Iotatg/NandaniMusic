@@ -8,7 +8,7 @@ import music.nandani.util.Util;
 
 import java.util.List;
 
-/** Notes, filters, playlists and sticker packs — mirrors lists/playlists/sticker. */
+/** Notes, filters, playlists and sticker packs. */
 public final class ListModule {
 
     private ListModule() {}

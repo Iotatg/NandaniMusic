@@ -1,6 +1,6 @@
 package music.nandani.model;
 
-/** PlaylistEntry — 1:1 with db.rs. */
+/** A saved playlist entry. */
 public final class PlaylistEntry {
     public String title;
     public String url;

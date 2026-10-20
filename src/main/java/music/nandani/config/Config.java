@@ -10,8 +10,8 @@ import java.util.List;
 import static music.nandani.util.Util.parseBool;
 
 /**
- * Runtime configuration — 1:1 with bot/src/config.rs.
- * Reads the same environment variable names as the Rust original so an
+ * Runtime configuration (environment variables).
+ * Reads standard environment variables so an
  * existing .env keeps working unchanged.
  */
 public final class Config {

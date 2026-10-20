@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * MTProto-backed assistant (user account) logged in from a Pyrogram-style
- * session string — the same STRING_SESSION flow the Rust bot uses, no TDLib
+ * session string — the STRING_SESSION flow, no TDLib
  * and no OTP required.
  *
  * Decoded string layout (validated against a live key): byte 0 = data centre,

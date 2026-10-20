@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * YAML localization engine — 1:1 port of bot/src/locales.rs.
+ * YAML localization engine.
  * Flat-YAML parser: `key:` at column 0; quoted or plain scalars;
  * block scalars `|` (keep newlines) and `>` (fold to spaces).
  */
@@ -133,7 +133,7 @@ public final class Locales {
         return out.toString();
     }
 
-    // ---- flat YAML parser (parity with locales.rs) ----
+    // ---- flat YAML parser ----
 
     private static Map<String, String> parseYamlFlat(String text) {
         Map<String, String> map = new HashMap<>();

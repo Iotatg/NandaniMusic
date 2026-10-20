@@ -3,7 +3,7 @@ package music.nandani.model;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Track — 1:1 with bot/src/models.rs. */
+/** A playable track resolved from any platform. */
 public final class Track {
 
     public String id = "";

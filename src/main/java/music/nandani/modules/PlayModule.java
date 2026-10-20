@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/** /play family — mirrors modules/play.rs. */
+/** /play family: resolve, download and queue tracks. */
 public final class PlayModule {
 
     public record Opts(boolean force, boolean cplay, boolean video) {
@@ -285,7 +285,7 @@ public final class PlayModule {
         return out.toString();
     }
 
-    /** FloodWait / connection-timeout handling, same retry contract as play.rs. */
+    /** FloodWait / connection-timeout retry handling. */
     private static boolean retryable(String err, int attempt, long chatId,
                                      Common.LiveMsg lm, Bot bot) {
         long wait = floodWaitSeconds(err);

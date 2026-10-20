@@ -7,7 +7,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 
-/** Tiny HTTP health endpoint (same role as bot/src/health.rs). */
+/** Tiny HTTP health endpoint. */
 public final class HealthServer {
 
     private final HttpServer server;

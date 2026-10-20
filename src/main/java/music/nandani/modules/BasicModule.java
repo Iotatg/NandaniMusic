@@ -9,7 +9,7 @@ import music.nandani.util.Util;
 
 import java.util.List;
 
-/** /start, /help, /ping, /lang, /settings and friends — mirrors modules/basic.rs. */
+/** /start, /help, /ping, /lang, /settings and friends. */
 public final class BasicModule {
 
     private BasicModule() {}
@@ -193,7 +193,7 @@ public final class BasicModule {
                 "db_objects", "1",
                 "served_chats", Integer.toString(Database.servedChats().size()),
                 "served_users", Integer.toString(Database.servedUsers().size()),
-                "core_ver", "Rust 1.99.0",
+                "core_ver", "1.0.0",
                 "api_ver", "Layer 227",
                 "vc_ver", "ntgcalls-rs");
         bot.replyText(m, text, null);

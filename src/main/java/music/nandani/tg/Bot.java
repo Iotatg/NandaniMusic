@@ -1,7 +1,7 @@
 package music.nandani.tg;
 
 /**
- * Transport-agnostic bot facade — mirrors the `Bot` trait in bot/src/mod_tg.rs.
+ * Transport-agnostic bot facade.
  * Implemented by {@link MtBot} (raw MTProto).
  */
 public interface Bot {

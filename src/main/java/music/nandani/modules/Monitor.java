@@ -15,8 +15,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Playback driver: native start/stop, queue advance and the 4s room watchdog
- * — mirrors bot/src/monitor.rs.
+ * Playback driver: native start/stop, queue advance and the 4s room watchdog.
  */
 public final class Monitor {
 
@@ -38,7 +37,7 @@ public final class Monitor {
         }
     }
 
-    /** chatId -> consecutive end ticks (Parvati monitor.rs end_streak). */
+    /** chatId -> consecutive end ticks past track duration. */
     private final java.util.Map<Long, Integer> endStreak = new java.util.HashMap<>();
 
     private void watchdog() {
@@ -56,7 +55,7 @@ public final class Monitor {
             if (enginePos > 0 && Math.abs(enginePos - statePos) > 12) {
                 r.position = enginePos;
             }
-            // end_streak_hit parity: 3 consecutive ticks past the duration
+            // 3 consecutive ticks past the duration
             // means the stream-end event was missed — rescue the queue.
             if (t.duration > 0 && r.position >= t.duration) {
                 int s = endStreak.merge(chatId, 1, Integer::sum);
@@ -69,7 +68,7 @@ public final class Monitor {
             } else {
                 endStreak.remove(chatId);
             }
-            // Keep the now-playing card's progress row fresh (card_edit parity).
+            // Keep the now-playing card's progress row fresh.
             long mid = r.statusMsg;
             Bot bot = Core.bot;
             if (mid != 0 && bot != null && Core.botReady

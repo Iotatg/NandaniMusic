@@ -13,9 +13,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * In-process store — 1:1 port of bot/src/db.rs.
- * The Mongo URI is accepted for configuration parity but nothing is persisted
- * externally, exactly like the Rust original.
+ * In-process JSON-backed store.
+ * A Mongo URI is accepted for configuration compatibility but nothing is persisted
+ * externally.
  */
 public final class Database {
 

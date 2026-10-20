@@ -11,8 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Process-wide singletons. The Rust bot reaches these through module-level
- * OnceLock/Mutex statics; a single holder keeps the port readable.
+ * Process-wide singletons.
  */
 public final class Core {
 

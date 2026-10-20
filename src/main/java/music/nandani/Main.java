@@ -29,7 +29,7 @@ import music.nandani.voice.NtgCalls;
 
 import java.util.Scanner;
 
-/** Entry point — mirrors bot/src/main.rs. */
+/** Entry point: boots config, db, mtproto, assistants and modules. */
 public final class Main {
 
     /** Serializes stream-end events per submission; 2 threads is plenty. */
@@ -159,7 +159,7 @@ public final class Main {
 
         Core.monitor = new Monitor();
         Core.monitor.start();
-        // wire_stream_end parity: feed stream-end events into advanceRoom on
+        // Feed stream-end events into advanceRoom on
         // their own threads (never block the native ntg callback thread).
         // Debounce 3s: ntgcalls fires one event per stream (audio AND video),
         // a second event right after an advance would skip the fresh track.

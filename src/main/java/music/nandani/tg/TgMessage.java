@@ -1,6 +1,6 @@
 package music.nandani.tg;
 
-/** Incoming message — mirrors TgMessage in mtproto/src/messaging.rs. */
+/** Incoming message from any transport. */
 public final class TgMessage {
     public long chatId;
     public long id;

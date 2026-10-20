@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
-/** Command / callback registry — mirrors Registry in modules/mod.rs. */
+/** Command / callback registry. */
 public final class Registry {
 
     public interface CmdHandler extends BiConsumer<Bot, TgMessage> {}

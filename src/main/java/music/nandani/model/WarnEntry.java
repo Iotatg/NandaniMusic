@@ -1,6 +1,6 @@
 package music.nandani.model;
 
-/** WarnEntry — 1:1 with db.rs. */
+/** A user warning record. */
 public final class WarnEntry {
     public String reason;
     public long by;

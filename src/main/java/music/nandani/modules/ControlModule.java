@@ -9,7 +9,7 @@ import music.nandani.voice.AssistantManager;
 
 import java.util.List;
 
-/** Queue + transport controls — mirrors queuecmd/skip/pause/stop/vc modules. */
+/** Queue + transport controls. */
 public final class ControlModule {
 
     private ControlModule() {}

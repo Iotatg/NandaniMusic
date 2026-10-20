@@ -19,7 +19,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Platform resolution + download dispatch — mirrors platforms/registry.rs.
+ * Platform resolution + download dispatch.
  * Ordering: Iota API (95) -&gt; Yuki API (85) -&gt; yt-dlp / direct HTTP fallback.
  */
 public final class PlatformRegistry {
@@ -267,7 +267,7 @@ public final class PlatformRegistry {
             String n = Track.normalizeTrackTitle(t.title);
             return n.isEmpty() || !history.contains("title:" + n);
         };
-        // Tier 0: iota /similar (fast API, same as Parvati registry.rs)
+        // Tier 0: iota /similar (fast API)
         for (Track t : iotaSimilar(last, 8)) {
             if (!accept.test(t)) continue;
             t.video = last.video;
@@ -340,7 +340,7 @@ public final class PlatformRegistry {
         return out;
     }
 
-    /** Random pick from the top 4 (parity with golden_zone_pick). */
+    /** Random pick from the top 4 candidates. */
     public static Track goldenZonePick(List<Track> candidates) {
         int pool = Math.min(candidates.size(), 4);
         if (pool == 0) return null;
@@ -349,7 +349,7 @@ public final class PlatformRegistry {
     }
 
     // ------------------------------------------------------------------
-    // Optional provider APIs (same config keys as the Rust bot)
+    // Optional provider APIs
     // ------------------------------------------------------------------
 
     private List<Track> iotaSearch(String query, int limit, boolean video) {

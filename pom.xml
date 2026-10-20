@@ -10,7 +10,7 @@
   <packaging>jar</packaging>
 
   <name>NandaniMusic</name>
-  <description>Telegram voice-chat music engine — Java port of ParvatiMusic</description>
+  <description>Telegram voice-chat music engine</description>
 
   <properties>
     <maven.compiler.release>17</maven.compiler.release>
@@ -28,7 +28,7 @@
       <version>${jna.version}</version>
     </dependency>
 
-    <!-- Locale packs (same YAML format as the Rust original) -->
+    <!-- Locale packs (flat YAML) -->
     <dependency>
       <groupId>org.yaml</groupId>
       <artifactId>snakeyaml</artifactId>
