@@ -319,6 +319,11 @@ Only reply when @mentioned, replied to, or your name appears in the text.
                 long id = c.asLong(0);
                 if (id != 0) enabled.put(id, true);
             }
+            // "off" is a real mute now, so it has to survive a restart too.
+            for (JsonNode c : root.path("muted")) {
+                long id = c.asLong(0);
+                if (id != 0) enabled.put(id, false);
+            }
             if (env("CHATBOT_ENABLED", "").isBlank() && root.has("global")) {
                 globalOn = root.path("global").asBoolean(true);
             }
@@ -334,6 +339,8 @@ Only reply when @mentioned, replied to, or your name appears in the text.
             root.put("global", globalOn);
             ArrayNode chats = root.putArray("chats");
             enabled.keySet().stream().filter(k -> Boolean.TRUE.equals(enabled.get(k))).sorted().forEach(chats::add);
+            ArrayNode muted = root.putArray("muted");
+            enabled.keySet().stream().filter(k -> Boolean.FALSE.equals(enabled.get(k))).sorted().forEach(muted::add);
             java.nio.file.Files.writeString(STATE, root.toString());
         } catch (Exception e) {
             System.err.println("[chatbot] state write failed: " + e.getMessage());
