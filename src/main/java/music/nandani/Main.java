@@ -292,6 +292,7 @@ public final class Main {
         }
         Core.botReady = true;
         Buttons.setBotUsername(bot.meUsername());
+        ChatbotModule.setBotUsername(bot.meUsername());
         Buttons.setDisableColour(cfg.disableColour);
         System.out.println("[bot] ready as @" + bot.meUsername() + " (" + bot.meId() + ")");
 
