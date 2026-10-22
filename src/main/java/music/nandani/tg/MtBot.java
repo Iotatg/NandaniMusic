@@ -609,7 +609,11 @@ public final class MtBot implements Bot {
                 m.lastName = sp > 0 ? name.substring(sp + 1) : "";
             }
             if (u.list("entities") != null && !u.list("entities").isEmpty()) {
-                // entities are parsed from the text by callers that need them
+                // Kept for the chatbot gate: a mention picked from the member
+                // list only exists as an entity, not as text.
+                for (Object o : u.list("entities")) {
+                    if (o instanceof TlNode en) m.entities.add(en);
+                }
             }
             dispatch(m);
         } catch (Throwable e) {

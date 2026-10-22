@@ -290,11 +290,21 @@ Only reply when @mentioned, replied to, or your name appears in the text.
             "🐢 <b>Slow down a bit</b>\n"
             + "<blockquote>The AI quota for this minute is used up. Try again in a minute.</blockquote>";
 
-    /** Reminder that Telegram withholds plain group messages from non-admins. */
+    private static final String ON_NOTICE =
+            "🤖 Chatbot is <b>ON</b> in this chat. Call my name, tag me or reply to me — I won't answer every message.";
+    private static final String OFF_NOTICE =
+            "🤖 Chatbot is <b>OFF</b> in this chat. I'll stay quiet until you turn it back on.";
+    private static final String STATUS_ON =
+            "🤖 Chatbot is ON here — call my name, tag me or reply to me and I'll answer.";
+    private static final String STATUS_OFF =
+            "🤖 Chatbot is OFF here. Turn it back on with /chatbot on.";
+
+    /** Explains when the bot speaks, and why admin still matters. */
     private static final String ON_TIP =
-            "👂 <b>One thing to check</b>\n"
-            + "<blockquote>Telegram only forwards @mentions, replies and commands to a bot unless it is an admin here. "
-            + "Make me an admin (or turn off privacy for me in BotFather) and I will hear every message.</blockquote>";
+            "👂 <b>How I listen</b>\n"
+            + "<blockquote>I answer only when you call my name, tag my @username, mention me or reply to my message "
+            + "— never on every message, admin or not. Telegram also withholds plain group messages from a bot "
+            + "unless it is an admin here, so keep me as admin if you want name triggers to reach me.</blockquote>";
 
     // ── state ────────────────────────────────────────────────────────────────
 
@@ -332,8 +342,13 @@ Only reply when @mentioned, replied to, or your name appears in the text.
 
     // ── gating ───────────────────────────────────────────────────────────────
 
+    /**
+     * Per-chat switch. On unless the chat muted itself: "on" means the bot may
+     * answer here, not that it answers everything — see addressed().
+     */
     private static boolean enabledIn(long chatId) {
-        return Boolean.TRUE.equals(enabled.get(chatId));
+        Boolean v = enabled.get(chatId);
+        return v == null || v;
     }
 
     private static boolean isOwn(long chatId, long msgId) {
@@ -351,9 +366,17 @@ Only reply when @mentioned, replied to, or your name appears in the text.
         }
     }
 
-    private static boolean addressed(TgMessage m) {
-        if (enabledIn(m.chatId)) return true;
+    /**
+     * True only when the message is aimed at the bot.
+     *
+     * Never "every message", not even for an admin: a chat that is switched on
+     * still needs one of the four triggers below, otherwise a busy group turns
+     * into a flood of unwanted replies. /chatbot off mutes the chat entirely.
+     */
+    private static boolean addressed(Bot bot, TgMessage m) {
+        if (!enabledIn(m.chatId)) return false;
         if (m.replyTo > 0 && isOwn(m.chatId, m.replyTo)) return true;
+        if (entityMentionsBot(bot, m)) return true;
         String text = m.text == null ? "" : m.text;
         String lower = text.toLowerCase(Locale.ROOT);
         if (!botUsername.isEmpty() && lower.contains("@" + botUsername.toLowerCase(Locale.ROOT))) return true;
@@ -361,6 +384,43 @@ Only reply when @mentioned, replied to, or your name appears in the text.
             if (hasWord(text, t)) return true;
         }
         return false;
+    }
+
+    /**
+     * True when an entity is a mention of this bot.
+     *
+     * messageEntityMentionName is what Telegram sends when someone taps the
+     * bot in the member list; the visible text is then the display name, which
+     * is often written in styled letters and would never match a name trigger.
+     */
+    private static boolean entityMentionsBot(Bot bot, TgMessage m) {
+        if (m.entities == null || m.entities.isEmpty()) return false;
+        long meId = 0;
+        try {
+            meId = bot == null ? 0 : bot.meId();
+        } catch (Exception ignored) {
+            // Older bot builds may not expose an id; the text triggers still work.
+        }
+        String uname = botUsername == null ? "" : botUsername.trim().toLowerCase(Locale.ROOT);
+        String text = m.text == null ? "" : m.text;
+        for (var e : m.entities) {
+            String type = e.name == null ? "" : e.name;
+            if (type.equals("messageEntityMentionName")) {
+                if (meId != 0 && e.l("user_id") == meId) return true;
+            } else if (type.equals("messageEntityMention") && !uname.isEmpty()) {
+                String chunk = entityText(text, e.i("offset"), e.i("length")).trim().toLowerCase(Locale.ROOT);
+                if (chunk.equals("@" + uname)) return true;
+            }
+        }
+        return false;
+    }
+
+    /** Telegram entity offsets are UTF-16 code units, not chars or bytes. */
+    private static String entityText(String text, int offset, int length) {
+        if (text == null || length <= 0 || offset < 0) return "";
+        int start = Math.min(offset, text.length());
+        int end = Math.min(offset + length, text.length());
+        return start >= end ? "" : text.substring(start, end);
     }
 
     /** Words that count as addressing the bot by name. */
@@ -414,7 +474,7 @@ Only reply when @mentioned, replied to, or your name appears in the text.
         String text = m.text.trim();
         if (text.isEmpty() || text.startsWith("/") || text.startsWith(".")) return;
         if (m.senderIsBot || m.senderId == 0) return;
-        if (!m.isPrivate && !addressed(m)) {
+        if (!m.isPrivate && !addressed(bot, m)) {
             if (!env("CHATBOT_DEBUG", "").isBlank()) {
                 System.out.println("[chatbot] skip chat=" + m.chatId + " (no trigger)");
             }
@@ -559,10 +619,16 @@ Only reply when @mentioned, replied to, or your name appears in the text.
             return;
         }
         String arg = arg(m.text);
+        if (arg.isEmpty() || arg.equals("status")) {
+            // Bare /chatbot used to flip the switch; with "on" as the default
+            // that would mute the chat by accident.
+            bot.replyText(m, enabledIn(m.chatId) ? STATUS_ON : STATUS_OFF, null);
+            return;
+        }
         boolean on = !enabledIn(m.chatId);
         if (arg.equals("on") || arg.equals("enable") || arg.equals("1") || arg.equals("true")) on = true;
         else if (arg.equals("off") || arg.equals("disable") || arg.equals("0") || arg.equals("false")) on = false;
-        else if (!arg.isEmpty() && !arg.equals("toggle")) {
+        else if (!arg.equals("toggle")) {
             bot.replyText(m, "Usage: /chatbot on | off", null);
             return;
         }
@@ -572,7 +638,7 @@ Only reply when @mentioned, replied to, or your name appears in the text.
             bot.replyText(m, NO_KEY_NOTICE, null);
             return;
         }
-        bot.replyText(m, "🤖 Chatbot is now <b>" + (on ? "ON" : "OFF") + "</b> in this chat.", null);
+        bot.replyText(m, on ? ON_NOTICE : OFF_NOTICE, null);
         if (on && Boolean.FALSE.equals(readsAll)) {
             // Only nag when Telegram really is withholding messages.
             bot.replyText(m, ON_TIP, null);
