@@ -52,6 +52,8 @@ public final class ChatbotModule {
     private static final Map<Long, java.util.Set<Long>> ownMessages = new ConcurrentHashMap<>();
     private static final Map<Long, Long> busyWarned = new ConcurrentHashMap<>();
 
+    /** null = unknown, false = privacy on (mentions only), true = reads all. */
+    private static volatile Boolean readsAll = null;
     private static volatile boolean globalOn = true;
     private static String botName = "Nandani";
     private static String botUsername = "";
@@ -73,6 +75,7 @@ public final class ChatbotModule {
         botName = env("BOT_NAME", "Nandani");
         botUsername = env("BOT_USERNAME", "");
         globalOn = !"false".equalsIgnoreCase(env("CHATBOT_ENABLED", "true"));
+        loadState();
         persona = loadPersona();
         resolveProvider();
 
@@ -84,6 +87,36 @@ public final class ChatbotModule {
         System.out.println("[chatbot] " + (available()
                 ? "on (" + String.join(" → ", models) + ", " + rpm() + " rpm)"
                 : "off (no key)"));
+        reportGroupPrivacy();
+    }
+
+    /**
+     * Say out loud whether Telegram forwards ordinary group messages to us.
+     *
+     * A bot with privacy on only ever sees commands, @mentions and replies,
+     * which looks exactly like a broken chatbot from the outside.
+     */
+    private static void reportGroupPrivacy() {
+        String token = env("TOKEN", "");
+        if (token.isBlank()) return;
+        try {
+            HttpRequest req = HttpRequest.newBuilder(URI.create("https://api.telegram.org/bot" + token + "/getMe"))
+                    .timeout(Duration.ofSeconds(5))
+                    .GET()
+                    .build();
+            HttpResponse<String> resp = HTTP.send(req, HttpResponse.BodyHandlers.ofString());
+            JsonNode result = JSON.readTree(resp.body()).path("result");
+            if (result.has("can_read_all_group_messages")) {
+                boolean all = result.path("can_read_all_group_messages").asBoolean(false);
+                readsAll = all;
+                System.out.println("[chatbot] group privacy — " + (all
+                        ? "off: every group message reaches me"
+                        : "ON: only @mentions, replies and commands reach me "
+                          + "(make me an admin, or disable privacy in BotFather)"));
+            }
+        } catch (Exception ignored) {
+            // Startup diagnostics only; never block the bot on this.
+        }
     }
 
     // ── configuration ────────────────────────────────────────────────────────
@@ -258,6 +291,46 @@ Only reply when @mentioned, replied to, or your name appears in the text.
             "🐢 <b>Slow down a bit</b>\n"
             + "<blockquote>The AI quota for this minute is used up. Try again in a minute.</blockquote>";
 
+    /** Reminder that Telegram withholds plain group messages from non-admins. */
+    private static final String ON_TIP =
+            "👂 <b>One thing to check</b>\n"
+            + "<blockquote>Telegram only forwards @mentions, replies and commands to a bot unless it is an admin here. "
+            + "Make me an admin (or turn off privacy for me in BotFather) and I will hear every message.</blockquote>";
+
+    // ── state ────────────────────────────────────────────────────────────────
+
+    private static final java.nio.file.Path STATE = java.nio.file.Path.of("data", "chatbot.json");
+
+    /** Restore which chats had /chatbot on before the last restart. */
+    private static void loadState() {
+        try {
+            if (!java.nio.file.Files.exists(STATE)) return;
+            JsonNode root = JSON.readTree(java.nio.file.Files.readString(STATE));
+            for (JsonNode c : root.path("chats")) {
+                long id = c.asLong(0);
+                if (id != 0) enabled.put(id, true);
+            }
+            if (env("CHATBOT_ENABLED", "").isBlank() && root.has("global")) {
+                globalOn = root.path("global").asBoolean(true);
+            }
+        } catch (Exception e) {
+            System.err.println("[chatbot] state read failed: " + e.getMessage());
+        }
+    }
+
+    private static synchronized void saveState() {
+        try {
+            java.nio.file.Files.createDirectories(STATE.getParent());
+            ObjectNode root = JSON.createObjectNode();
+            root.put("global", globalOn);
+            ArrayNode chats = root.putArray("chats");
+            enabled.keySet().stream().filter(k -> Boolean.TRUE.equals(enabled.get(k))).sorted().forEach(chats::add);
+            java.nio.file.Files.writeString(STATE, root.toString());
+        } catch (Exception e) {
+            System.err.println("[chatbot] state write failed: " + e.getMessage());
+        }
+    }
+
     // ── gating ───────────────────────────────────────────────────────────────
 
     private static boolean enabledIn(long chatId) {
@@ -285,18 +358,38 @@ Only reply when @mentioned, replied to, or your name appears in the text.
         String text = m.text == null ? "" : m.text;
         String lower = text.toLowerCase(Locale.ROOT);
         if (!botUsername.isEmpty() && lower.contains("@" + botUsername.toLowerCase(Locale.ROOT))) return true;
-        List<String> triggers = new ArrayList<>();
+        for (String t : triggers()) {
+            if (hasWord(text, t)) return true;
+        }
+        return false;
+    }
+
+    /** Words that count as addressing the bot by name. */
+    private static List<String> triggers() {
+        List<String> list = new ArrayList<>();
         String custom = env("CHATBOT_TRIGGER", "");
         if (!custom.isBlank()) {
-            for (String t : custom.split(",")) if (!t.isBlank()) triggers.add(t.trim().toLowerCase(Locale.ROOT));
-        } else {
-            triggers.add(botName.toLowerCase(Locale.ROOT));
-            String first = botName.trim().split("\\s+")[0];
-            if (!first.isEmpty()) triggers.add(first.toLowerCase(Locale.ROOT));
+            for (String t : custom.split(",")) if (!t.isBlank()) list.add(t.trim());
+            return list;
         }
-        String padded = " " + lower.replaceAll("\\s+", " ") + " ";
-        for (String t : triggers) if (padded.contains(" " + t + " ")) return true;
-        return false;
+        list.add(botName.trim());
+        String first = botName.trim().split("\\s+")[0];
+        if (!first.isEmpty() && !list.contains(first)) list.add(first);
+        return list;
+    }
+
+    /**
+     * Case-insensitive whole-word match that tolerates punctuation.
+     *
+     * "Nandani, sun na" and "arre nandani!" both count; "nandanimusic" does
+     * not. The old space-padded compare missed every punctuated mention.
+     */
+    private static boolean hasWord(String haystack, String needle) {
+        if (needle == null || needle.isBlank()) return false;
+        var p = java.util.regex.Pattern.compile(
+                "(?<![\\p{L}\\p{N}_])" + java.util.regex.Pattern.quote(needle.trim()) + "(?![\\p{L}\\p{N}_])",
+                java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE);
+        return p.matcher(haystack).find();
     }
 
     private static String clean(String text) {
@@ -304,7 +397,13 @@ Only reply when @mentioned, replied to, or your name appears in the text.
         if (!botUsername.isEmpty()) {
             out = out.replaceAll("(?i)@" + java.util.regex.Pattern.quote(botUsername), "");
         }
+        for (String t : triggers()) {
+            if (t.isBlank()) continue;
+            out = out.replaceAll(
+                    "(?i)(?<![\\p{L}\\p{N}_])" + java.util.regex.Pattern.quote(t.trim()) + "(?![\\p{L}\\p{N}_])", "");
+        }
         out = out.replaceAll("\\s+", " ").trim();
+        out = out.replaceAll("^[,.;:!?\\-\\s]+|[,.;:!?\\-\\s]+$", "");
         return out.isEmpty() ? "hmm" : out;
     }
 
@@ -316,7 +415,12 @@ Only reply when @mentioned, replied to, or your name appears in the text.
         String text = m.text.trim();
         if (text.isEmpty() || text.startsWith("/") || text.startsWith(".")) return;
         if (m.senderIsBot || m.senderId == 0) return;
-        if (!m.isPrivate && !addressed(m)) return;
+        if (!m.isPrivate && !addressed(m)) {
+            if (!env("CHATBOT_DEBUG", "").isBlank()) {
+                System.out.println("[chatbot] skip chat=" + m.chatId + " (no trigger)");
+            }
+            return;
+        }
 
         long key = m.isPrivate ? m.senderId : m.chatId;
         long now = System.currentTimeMillis();
@@ -464,11 +568,16 @@ Only reply when @mentioned, replied to, or your name appears in the text.
             return;
         }
         enabled.put(m.chatId, on);
+        saveState();
         if (on && !available()) {
             bot.replyText(m, NO_KEY_NOTICE, null);
             return;
         }
         bot.replyText(m, "🤖 Chatbot is now <b>" + (on ? "ON" : "OFF") + "</b> in this chat.", null);
+        if (on && Boolean.FALSE.equals(readsAll)) {
+            // Only nag when Telegram really is withholding messages.
+            bot.replyText(m, ON_TIP, null);
+        }
     }
 
     private static void global(Bot bot, TgMessage m) {
@@ -477,6 +586,7 @@ Only reply when @mentioned, replied to, or your name appears in the text.
             return;
         }
         globalOn = !globalOn;
+        saveState();
         if (globalOn && !available()) {
             bot.replyText(m, NO_KEY_NOTICE, null);
             return;
