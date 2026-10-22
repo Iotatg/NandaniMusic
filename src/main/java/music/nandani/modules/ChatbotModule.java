@@ -430,7 +430,14 @@ Only reply when @mentioned, replied to, or your name appears in the text.
         return start >= end ? "" : text.substring(start, end);
     }
 
-    /** Words that count as addressing the bot by name. */
+    /**
+     * Words that count as addressing the bot by name.
+     *
+     * The display name is not enough: ours is written in styled letters
+     * (𝐍‌ᴧηᴅᴧηɪ …), so a person typing plain "nandani" would never match it.
+     * The username is plain ASCII and always available once getMe answers, so
+     * its readable parts are added as triggers too.
+     */
     private static List<String> triggers() {
         List<String> list = new ArrayList<>();
         String custom = env("CHATBOT_TRIGGER", "");
@@ -438,10 +445,39 @@ Only reply when @mentioned, replied to, or your name appears in the text.
             for (String t : custom.split(",")) if (!t.isBlank()) list.add(t.trim());
             return list;
         }
-        list.add(botName.trim());
-        String first = botName.trim().split("\\s+")[0];
-        if (!first.isEmpty() && !list.contains(first)) list.add(first);
-        return list;
+        String name = botName == null ? "" : botName.replaceAll("[\\u200B-\\u200D\\uFEFF]", "").trim();
+        if (!name.isEmpty()) {
+            list.add(name);
+            for (String word : name.split("\\s+")) {
+                if (word.length() >= 3) list.add(word);
+            }
+        }
+        list.addAll(nameVariants(botUsername));
+        List<String> out = new ArrayList<>();
+        for (String w : list) {
+            if (w != null && !w.trim().isEmpty() && !out.contains(w)) out.add(w);
+        }
+        return out;
+    }
+
+    /**
+     * Plain spellings of a bot username.
+     *
+     * {@code Nandani_musicbot} -> ["nandani"]. Generic halves ("music", "bot")
+     * are dropped so the trigger stays a name people would actually type.
+     */
+    private static List<String> nameVariants(String username) {
+        List<String> out = new ArrayList<>();
+        if (username == null || username.trim().isEmpty()) return out;
+        String u = username.trim().replaceAll("(?<=[a-z])(?=[A-Z])", " ");
+        List<String> generic = List.of("music", "musicbot", "bot", "official", "the", "team", "inc", "ai", "x", "xm");
+        for (String part : u.split("[^A-Za-z0-9]+")) {
+            String p = part.toLowerCase(Locale.ROOT);
+            if (p.isEmpty() || generic.contains(p)) continue;
+            if (p.length() > 5 && p.endsWith("bot")) p = p.substring(0, p.length() - 3);
+            if (p.length() >= 3 && !generic.contains(p) && !out.contains(p)) out.add(p);
+        }
+        return out;
     }
 
     /**
