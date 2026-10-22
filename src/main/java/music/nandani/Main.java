@@ -8,6 +8,7 @@ import music.nandani.modules.AdminModule;
 import music.nandani.modules.BasicModule;
 import music.nandani.modules.Buttons;
 import music.nandani.modules.CallbackModule;
+import music.nandani.modules.ChatbotModule;
 import music.nandani.modules.ControlModule;
 import music.nandani.modules.Core;
 import music.nandani.modules.EventsModule;
@@ -96,6 +97,7 @@ public final class Main {
         AdminModule.register(reg);
         ListModule.register(reg);
         EventsModule.register(reg);
+        ChatbotModule.register(reg, cfg);
 
         // ---- native voice engine (optional: state-only mode without it) ----
         // Only load libntgcalls when at least one assistant account is

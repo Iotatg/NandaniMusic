@@ -1177,6 +1177,19 @@ public final class MtBot implements Bot {
     }
 
     @Override
+    public boolean sendTyping(long chatId) {
+        if (!ready) return false;
+        try {
+            mt.invoke(new TlNode("messages.setTyping")
+                    .put("peer", inputPeer(chatId))
+                    .put("action", new TlNode("sendMessageTypingAction")));
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
     public boolean sendChatActionChoosingSticker(long chatId) {
         if (!ready) return false;
         try {

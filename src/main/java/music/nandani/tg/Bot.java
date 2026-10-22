@@ -65,6 +65,9 @@ public interface Bot {
 
     boolean sendChatActionChoosingSticker(long chatId);
 
+    /** Show "typing…" in the chat. Transports that cannot do it return false. */
+    default boolean sendTyping(long chatId) { return false; }
+
     boolean sendSticker(long chatId, String sticker, long replyTo);
 
     long meId();

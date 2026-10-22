@@ -169,6 +169,13 @@ public final class Config {
     /** Effective environment: process env first, then .env values for absent keys. */
     private static final java.util.Map<String, String> ENV = new java.util.HashMap<>();
 
+    /** Raw lookup in the merged view — process env first, then .env. */
+    public static String env(String key) {
+        String v = ENV.get(key);
+        if (v != null) return v;
+        return System.getenv().getOrDefault(key, "");
+    }
+
     private static String getenvStr(String key, String def) {
         String v = ENV.get(key);
         return (v == null || v.isEmpty()) ? def : v;
