@@ -111,8 +111,7 @@ public final class ChatbotModule {
                 readsAll = all;
                 System.out.println("[chatbot] group privacy — " + (all
                         ? "off: every group message reaches me"
-                        : "ON: only @mentions, replies and commands reach me "
-                          + "(make me an admin, or disable privacy in BotFather)"));
+                        : "ON: where I am not admin, only @mentions, replies and commands reach me"));
             }
         } catch (Exception ignored) {
             // Startup diagnostics only; never block the bot on this.
